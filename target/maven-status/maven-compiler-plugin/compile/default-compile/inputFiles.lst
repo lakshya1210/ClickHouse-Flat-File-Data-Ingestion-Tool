@@ -1,0 +1,10 @@
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/model/IngestionRequest.java
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/controller/WebController.java
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/model/ColumnMetadata.java
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/model/FlatFileConfig.java
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/controller/IntegrationController.java
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/service/FlatFileService.java
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/service/IntegrationService.java
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/model/ClickHouseConfig.java
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/service/ClickHouseService.java
+/Users/lakshya/Desktop/Projects/ZeoTap/Integration/src/main/java/com/zeotap/integration/IntegrationApplication.java

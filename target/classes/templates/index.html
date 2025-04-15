@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClickHouse & Flat File Data Ingestion Tool</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .hidden {
+            display: none;
+        }
+        .progress {
+            height: 25px;
+        }
+        .column-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .preview-data {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1 class="mb-4">ClickHouse & Flat File Data Ingestion Tool</h1>
+        
+        <!-- Source Selection -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Step 1: Select Source and Target</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Source:</label>
+                        <select id="sourceType" class="form-select">
+                            <option value="">-- Select Source --</option>
+                            <option value="clickhouse">ClickHouse</option>
+                            <option value="flatfile">Flat File</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Target:</label>
+                        <select id="targetType" class="form-select">
+                            <option value="">-- Select Target --</option>
+                            <option value="clickhouse">ClickHouse</option>
+                            <option value="flatfile">Flat File</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ClickHouse Configuration (Source) -->
+        <div id="clickhouseSourceConfig" class="card mb-4 hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Step 2: Configure ClickHouse Source</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Host:</label>
+                        <input type="text" id="clickhouseSourceHost" class="form-control" placeholder="localhost">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Port:</label>
+                        <input type="number" id="clickhouseSourcePort" class="form-control" placeholder="8123">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Database:</label>
+                        <input type="text" id="clickhouseSourceDatabase" class="form-control" placeholder="default">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">User:</label>
+                        <input type="text" id="clickhouseSourceUser" class="form-control" placeholder="default">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">JWT Token:</label>
+                        <input type="password" id="clickhouseSourceJwtToken" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Connection Type:</label>
+                        <select id="clickhouseSourceSecure" class="form-select">
+                            <option value="false">HTTP (8123/9000)</option>
+                            <option value="true">HTTPS (8443/9440)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <button id="testClickhouseSourceConnection" class="btn btn-primary">Test Connection</button>
+                        <button id="loadClickhouseTables" class="btn btn-success ms-2">Load Tables</button>
+                    </div>
+                </div>
+                <div id="clickhouseConnectionResult" class="mt-3 hidden"></div>
+                
+                <!-- Table Selection -->
+                <div id="clickhouseTableSelection" class="mt-4 hidden">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Select Table:</label>
+                            <select id="clickhouseTableList" class="form-select"></select>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button id="loadClickhouseColumns" class="btn btn-success">Load Columns</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Bonus: Multi-Table Join -->
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="enableJoin">
+                                <label class="form-check-label" for="enableJoin">
+                                    Enable Multi-Table Join (Bonus Feature)
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="joinConfiguration" class="hidden">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Additional Tables:</label>
+                                <select id="additionalTables" class="form-select" multiple size="3"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Join Condition:</label>
+                                <input type="text" id="joinCondition" class="form-control" placeholder="table1.id = table2.id">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Flat File Configuration (Source) -->
+        <div id="flatfileSourceConfig" class="card mb-4 hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Step 2: Configure Flat File Source</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">File Path:</label>
+                        <input type="text" id="flatfileSourcePath" class="form-control" placeholder="/path/to/file.csv">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Delimiter:</label>
+                        <input type="text" id="flatfileSourceDelimiter" class="form-control" placeholder="," value=",">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="flatfileSourceHasHeader" checked>
+                            <label class="form-check-label" for="flatfileSourceHasHeader">
+                                File has header row
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Encoding:</label>
+                        <input type="text" id="flatfileSourceEncoding" class="form-control" placeholder="UTF-8" value="UTF-8">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <button id="loadFlatfileColumns" class="btn btn-success">Load Columns</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- ClickHouse Configuration (Target) -->
+        <div id="clickhouseTargetConfig" class="card mb-4 hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Step 3: Configure ClickHouse Target</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Host:</label>
+                        <input type="text" id="clickhouseTargetHost" class="form-control" placeholder="localhost">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Port:</label>
+                        <input type="number" id="clickhouseTargetPort" class="form-control" placeholder="8123">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Database:</label>
+                        <input type="text" id="clickhouseTargetDatabase" class="form-control" placeholder="default">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">User:</label>
+                        <input type="text" id="clickhouseTargetUser" class="form-control" placeholder="default">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">JWT Token:</label>
+                        <input type="password" id="clickhouseTargetJwtToken" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Connection Type:</label>
+                        <select id="clickhouseTargetSecure" class="form-select">
+                            <option value="false">HTTP (8123/9000)</option>
+                            <option value="true">HTTPS (8443/9440)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Target Table Name:</label>
+                        <input type="text" id="clickhouseTargetTable" class="form-control" placeholder="target_table">
+                    </div>
+                    <div class="col-md-6 d-flex align-items-end">
+                        <button id="testClickhouseTargetConnection" class="btn btn-primary">Test Connection</button>
+                    </div>
+                </div>
+                <div id="clickhouseTargetConnectionResult" class="mt-3 hidden"></div>
+            </div>
+        </div>
+        
+        <!-- Flat File Configuration (Target) -->
+        <div id="flatfileTargetConfig" class="card mb-4 hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Step 3: Configure Flat File Target</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">File Path:</label>
+                        <input type="text" id="flatfileTargetPath" class="form-control" placeholder="/path/to/output.csv">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Delimiter:</label>
+                        <input type="text" id="flatfileTargetDelimiter" class="form-control" placeholder="," value=",">
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="flatfileTargetHasHeader" checked>
+                            <label class="form-check-label" for="flatfileTargetHasHeader">
+                                Include header row
+                            </label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Encoding:</label>
+                        <input type="text" id="flatfileTargetEncoding" class="form-control" placeholder="UTF-8" value="UTF-8">
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Column Selection -->
+        <div id="columnSelectionSection" class="card mb-4 hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Step 4: Select Columns for Ingestion</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="d-flex justify-content-between mb-2">
+                            <h6>Available Columns</h6>
+                            <div>
+                                <button id="selectAllColumns" class="btn btn-sm btn-outline-primary">Select All</button>
+                                <button id="deselectAllColumns" class="btn btn-sm btn-outline-secondary ms-2">Deselect All</button>
+                            </div>
+                        </div>
+                        <div id="columnList" class="column-list border p-3"></div>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <button id="previewData" class="btn btn-info">Preview Data</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Data Preview -->
+        <div id="dataPreviewSection" class="card mb-4 hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Step 5: Data Preview</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <div class="preview-data border p-3">
+                            <div id="previewContent"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Ingestion Execution -->
+        <div id="ingestionSection" class="card mb-4 hidden">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Step 6: Execute Ingestion</h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <button id="startIngestion" class="btn btn-success">Start Ingestion</button>
+                    </div>
+                </div>
+                <div id="ingestionProgress" class="row mb-3 hidden">
+                    <div class="col-md-12">
+                        <label>Ingestion Progress:</label>
+                        <div class="progress">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="ingestionStatus" class="row mb-3 hidden">
+                    <div class="col-md-12">
+                        <div class="alert" role="alert"></div>
+                    </div>
+                </div>
+                <div id="ingestionResult" class="row hidden">
+                    <div class="col-md-12">
+                        <div class="alert alert-success" role="alert">
+                            <h5>Ingestion Completed</h5>
+                            <p>Total records processed: <span id="recordCount">0</span></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            // Global variables
+            let columns = [];
+            let ingestionInProgress = false;
+            
+            // Source and target selection
+            $('#sourceType').change(function() {
+                const sourceType = $(this).val();
+                $('#clickhouseSourceConfig, #flatfileSourceConfig').addClass('hidden');
+                $('#columnSelectionSection, #dataPreviewSection, #ingestionSection').addClass('hidden');
+                
+                if (sourceType === 'clickhouse') {
+                    $('#clickhouseSourceConfig').removeClass('hidden');
+                } else if (sourceType === 'flatfile') {
+                    $('#flatfileSourceConfig').removeClass('hidden');
+                }
+                
+                updateIngestionVisibility();
+            });
+            
+            $('#targetType').change(function() {
+                const targetType = $(this).val();
+                $('#clickhouseTargetConfig, #flatfileTargetConfig').addClass('hidden');
+                $('#ingestionSection').addClass('hidden');
+                
+                if (targetType === 'clickhouse') {
+                    $('#clickhouseTargetConfig').removeClass('hidden');
+                } else if (targetType === 'flatfile') {
+                    $('#flatfileTargetConfig').removeClass('hidden');
+                }
+                
+                updateIngestionVisibility();
+            });
+            
+            // Enable/disable join configuration
+            $('#enableJoin').change(function() {
+                if ($(this).is(':checked')) {
+                    $('#joinConfiguration').removeClass('hidden');
+                } else {
+                    $('#joinConfiguration').addClass('hidden');
+                }
+            });
+            
+            // Test ClickHouse source connection
+            $('#testClickhouseSourceConnection').click(function() {
+                const config = getClickHouseSourceConfig();
+                testClickHouseConnection(config, '#clickhouseConnectionResult');
+            });
+            
+            // Test ClickHouse target connection
+            $('#testClickhouseTargetConnection').click(function() {
+                const config = getClickHouseTargetConfig();
+                testClickHouseConnection(config, '#clickhouseTargetConnectionResult');
+            });
+            
+            // Load ClickHouse tables
+            $('#loadClickhouseTables').click(function() {
+                const config = getClickHouseSourceConfig();
+                
+                $.ajax({
+                    url: '/api/integration/clickhouse/tables',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(config),
+                    success: function(response) {
+                        if (response.success) {
+                            const tables = response.tables;
+                            $('#clickhouseTableList').empty();
+                            $('#additionalTables').empty();
+                            
+                            tables.forEach(function(table) {
+                                $('#clickhouseTableList').append(`<option value="${table}">${table}</option>`);
+                                $('#additionalTables').append(`<option value="${table}">${table}</option>`);
+                            });
+                            
+                            $('#clickhouseTableSelection').removeClass('hidden');
+                        } else {
+                            showError('#clickhouseConnectionResult', response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        showError('#clickhouseConnectionResult', 'Failed to load tables: ' + xhr.responseText);
+                    }
+                });
+            });
+            
+            // Load ClickHouse columns
+            $('#loadClickhouseColumns').click(function() {
+                const config = getClickHouseSourceConfig();
+                const tableName = $('#clickhouseTableList').val();
+                
+                if (!tableName) {
+                    showError('#clickhouseConnectionResult', 'Please select a table');
+                    return;
+                }
+                
+                $.ajax({
+                    url: `/api/integration/clickhouse/schema?tableName=${tableName}`,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(config),
+                    success: function(response) {
+                        if (response.success) {
+                            columns = response.columns;
+                            displayColumns(columns);
+                            $('#columnSelectionSection').removeClass('hidden');
+                        } else {
+                            showError('#clickhouseConnectionResult', response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        showError('#clickhouseConnectionResult', 'Failed to load columns: ' + xhr.responseText);
+                    }
+                });
+            });
+            
+            // Load Flat File columns
+            $('#loadFlatfileColumns').click(function() {
+                const config = getFlatFileSourceConfig();
+                
+                $.ajax({
+                    url: '/api/integration/flatfile/schema',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(config),
+                    success: function(response) {
+                        if (response.success) {
+                            columns = response.columns;
+                            displayColumns(columns);
+                            $('#columnSelectionSection').removeClass('hidden');
+                        } else {
+                            showError('#flatfileSourceConfig', response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        showError('#flatfileSourceConfig', 'Failed to load columns: ' + xhr.responseText);
+                    }
+                });
+            });
+            
+            // Select/deselect all columns
+            $('#selectAllColumns').click(function() {
+                $('.column-checkbox').prop('checked', true);
+                updateColumnSelection();
+            });
+            
+            $('#deselectAllColumns').click(function() {
+                $('.column-checkbox').prop('checked', false);
+                updateColumnSelection();
+            });
+            
+            // Preview data
+            $('#previewData').click(function() {
+                const request = buildIngestionRequest();
+                
+                // Update column selection based on checkboxes
+                updateColumnSelection();
+                
+                let previewUrl = '';
+                if (request.sourceType === 'clickhouse') {
+                    previewUrl = '/api/integration/clickhouse/preview';
+                } else if (request.sourceType === 'flatfile') {
+                    previewUrl = '/api/integration/flatfile/preview';
+                }
+                
+                $.ajax({
+                    url: previewUrl,
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(request),
+                    success: function(response) {
+                        if (response.success) {
+                            displayPreviewData(response.data);
+                            $('#dataPreviewSection').removeClass('hidden');
+                            $('#ingestionSection').removeClass('hidden');
+                        } else {
+                            showError('#columnSelectionSection', response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        showError('#columnSelectionSection', 'Failed to preview data: ' + xhr.responseText);
+                    }
+                });
+            });
+            
+            // Start ingestion
+            $('#startIngestion').click(function() {
+                if (ingestionInProgress) {
+                    return;
+                }
+                
+                const request = buildIngestionRequest();
+                
+                // Update column selection based on checkboxes
+                updateColumnSelection();
+                
+                // Show progress
+                ingestionInProgress = true;
+                $('#ingestionProgress').removeClass('hidden');
+                $('#ingestionStatus').removeClass('hidden');
+                $('#ingestionResult').addClass('hidden');
+                $('#progressBar').css('width', '0%');
+                $('#ingestionStatus .alert').removeClass('alert-danger alert-success').addClass('alert-info').text('Ingestion in progress...');
+                
+                // Simulate progress (since we don't have real-time progress updates)
+                let progress = 0;
+                const progressInterval = setInterval(function() {
+                    if (progress < 90) {
+                        progress += 5;
+                        $('#progressBar').css('width', progress + '%');
+                    }
+                }, 500);
+                
+                $.ajax({
+                    url: '/api/integration/execute',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(request),
+                    success: function(response) {
+                        clearInterval(progressInterval);
+                        ingestionInProgress = false;
+                        
+                        if (response.success) {
+                            $('#progressBar').css('width', '100%');
+                            $('#ingestionStatus .alert').removeClass('alert-info alert-danger').addClass('alert-success').text('Ingestion completed successfully!');
+                            $('#recordCount').text(response.recordCount);
+                            $('#ingestionResult').removeClass('hidden');
+                        } else {
+                            $('#progressBar').css('width', '0%');
+                            $('#ingestionStatus .alert').removeClass('alert-info alert-success').addClass('alert-danger').text('Ingestion failed: ' + response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        clearInterval(progressInterval);
+                        ingestionInProgress = false;
+                        $('#progressBar').css('width', '0%');
+                        $('#ingestionStatus .alert').removeClass('alert-info alert-success').addClass('alert-danger').text('Ingestion failed: ' + xhr.responseText);
+                    }
+                });
+            });
+            
+            // Helper functions
+            function getClickHouseSourceConfig() {
+                return {
+                    host: $('#clickhouseSourceHost').val() || 'localhost',
+                    port: parseInt($('#clickhouseSourcePort').val()) || 8123,
+                    database: $('#clickhouseSourceDatabase').val() || 'default',
+                    user: $('#clickhouseSourceUser').val() || 'default',
+                    jwtToken: $('#clickhouseSourceJwtToken').val(),
+                    secure: $('#clickhouseSourceSecure').val() === 'true'
+                };
+            }
+            
+            function getClickHouseTargetConfig() {
+                return {
+                    host: $('#clickhouseTargetHost').val() || 'localhost',
+                    port: parseInt($('#clickhouseTargetPort').val()) || 8123,
+                    database: $('#clickhouseTargetDatabase').val() || 'default',
+                    user: $('#clickhouseTargetUser').val() || 'default',
+                    jwtToken: $('#clickhouseTargetJwtToken').val(),
+                    secure: $('#clickhouseTargetSecure').val() === 'true'
+                };
+            }
+            
+            function getFlatFileSourceConfig() {
+                return {
+                    fileName: $('#flatfileSourcePath').val(),
+                    delimiter: $('#flatfileSourceDelimiter').val() || ',',
+                    hasHeader: $('#flatfileSourceHasHeader').is(':checked'),
+                    encoding: $('#flatfileSourceEncoding').val() || 'UTF-8'
+                };
+            }
+            
+            function getFlatFileTargetConfig() {
+                return {
+                    fileName: $('#flatfileTargetPath').val(),
+                    delimiter: $('#flatfileTargetDelimiter').val() || ',',
+                    hasHeader: $('#flatfileTargetHasHeader').is(':checked'),
+                    encoding: $('#flatfileTargetEncoding').val() || 'UTF-8'
+                };
+            }
+            
+            function testClickHouseConnection(config, resultSelector) {
+                $.ajax({
+                    url: '/api/integration/clickhouse/test-connection',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify(config),
+                    success: function(response) {
+                        if (response.success) {
+                            $(resultSelector).removeClass('hidden').html(
+                                '<div class="alert alert-success">' + response.message + '</div>'
+                            );
+                        } else {
+                            showError(resultSelector, response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        showError(resultSelector, 'Connection failed: ' + xhr.responseText);
+                    }
+                });
+            }
+            
+            function showError(selector, message) {
+                $(selector).removeClass('hidden').html(
+                    '<div class="alert alert-danger">' + message + '</div>'
+                );
+            }
+            
+            function displayColumns(columnList) {
+                const columnListElement = $('#columnList');
+                columnListElement.empty();
+                
+                columnList.forEach(function(column, index) {
+                    const columnHtml = `
+                        <div class="form-check">
+                            <input class="form-check-input column-checkbox" type="checkbox" value="${index}" id="column_${index}" checked>
+                            <label class="form-check-label" for="column_${index}">
+                                ${column.name} (${column.type})
+                            </label>
+                        </div>
+                    `;
+                    columnListElement.append(columnHtml);
+                });
+                
+                // Add change event to update column selection
+                $('.column-checkbox').change(updateColumnSelection);
+            }
+            
+            function updateColumnSelection() {
+                $('.column-checkbox').each(function() {
+                    const index = parseInt($(this).val());
+                    columns[index].selected = $(this).is(':checked');
+                });
+            }
+            
+            function displayPreviewData(data) {
+                const previewContent = $('#previewContent');
+                previewContent.empty();
+                
+                if (!data || data.length === 0) {
+                    previewContent.html('<div class="alert alert-warning">No data available for preview</div>');
+                    return;
+                }
+                
+                // Create table
+                const table = $('<table class="table table-striped table-bordered"></table>');
+                
+                // Create header
+                const thead = $('<thead></thead>');
+                const headerRow = $('<tr></tr>');
+                
+                // Get selected columns
+                const selectedColumns = columns.filter(col => col.selected);
+                
+                // Add headers
+                selectedColumns.forEach(function(column) {
+                    headerRow.append(`<th>${column.name}</th>`);
+                });
+                
+                thead.append(headerRow);
+                table.append(thead);
+                
+                // Create body
+                const tbody = $('<tbody></tbody>');
+                
+                // Add data rows (limit to 10 rows for preview)
+                const previewRows = data.slice(0, 10);
+                previewRows.forEach(function(row) {
+                    const tr = $('<tr></tr>');
+                    
+                    selectedColumns.forEach(function(column) {
+                        tr.append(`<td>${row[column.name] || ''}</td>`);
+                    });
+                    
+                    tbody.append(tr);
+                });
+                
+                table.append(tbody);
+                previewContent.append(table);
+                
+                // Show row count info
+                if (data.length > 10) {
+                    previewContent.append(`<div class="mt-2 text-muted">Showing 10 of ${data.length} rows</div>`);
+                }
+            }
+            
+            function buildIngestionRequest() {
+                // Get source and target types
+                const sourceType = $('#sourceType').val();
+                const targetType = $('#targetType').val();
+                
+                // Get selected columns
+                const selectedColumns = columns.filter(col => col.selected).map(col => col.name);
+                
+                // Base request object
+                const request = {
+                    sourceType: sourceType,
+                    targetType: targetType,
+                    columns: selectedColumns
+                };
+                
+                // Add source configuration
+                if (sourceType === 'clickhouse') {
+                    request.sourceConfig = getClickHouseSourceConfig();
+                    request.sourceTable = $('#clickhouseTableList').val();
+                    
+                    // Add join configuration if enabled
+                    if ($('#enableJoin').is(':checked')) {
+                        request.joinEnabled = true;
+                        request.additionalTables = $('#additionalTables').val();
+                        request.joinCondition = $('#joinCondition').val();
+                    }
+                } else if (sourceType === 'flatfile') {
+                    request.sourceConfig = getFlatFileSourceConfig();
+                }
+                
+                // Add target configuration
+                if (targetType === 'clickhouse') {
+                    request.targetConfig = getClickHouseTargetConfig();
+                    request.targetTable = $('#clickhouseTargetTable').val();
+                } else if (targetType === 'flatfile') {
+                    request.targetConfig = getFlatFileTargetConfig();
+                }
+                
+                return request;
+            }
+            
+            function updateIngestionVisibility() {
+                // Show ingestion section only when both source and target are configured
+                const sourceType = $('#sourceType').val();
+                const targetType = $('#targetType').val();
+                
+                if (sourceType && targetType) {
+                    // Both source and target are selected, but we still need to check if columns are loaded
+                    if (columns.length > 0) {
+                        $('#columnSelectionSection').removeClass('hidden');
+                    }
+                } else {
+                    // Hide sections that depend on both source and target
+                    $('#columnSelectionSection, #dataPreviewSection, #ingestionSection').addClass('hidden');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+                    
