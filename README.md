@@ -13,7 +13,7 @@ A bidirectional data ingestion tool that facilitates data transfer between Click
 
 ## Prerequisites
 
-- Java 11 or higher
+- Java 8 or higher
 - Maven 3.6 or higher
 - ClickHouse database (local or remote)
 
