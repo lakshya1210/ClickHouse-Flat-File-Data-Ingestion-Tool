@@ -11,20 +11,31 @@ import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.FileReader;
-import java.io.FileWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
 import java.io.Writer;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.URLDecoder;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Service for handling Flat File operations
@@ -32,6 +43,65 @@ import java.util.Map;
 @Service
 @Slf4j
 public class FlatFileService {
+
+    /**
+     * Resolves a file path or URL to a local file path
+     * 
+     * @param filePathOrUrl File path or URL string
+     * @return Local file path
+     * @throws IOException if file cannot be accessed or downloaded
+     */
+    private String resolveFilePathOrUrl(String filePathOrUrl) throws IOException {
+        if (filePathOrUrl == null || filePathOrUrl.trim().isEmpty()) {
+            throw new IOException("File path or URL cannot be empty");
+        }
+        
+        // Check if the input is a URL
+        if (filePathOrUrl.toLowerCase().startsWith("http://") || filePathOrUrl.toLowerCase().startsWith("https://")) {
+            log.info("Detected URL: {}", filePathOrUrl);
+            try {
+                // Create a URL object and open connection
+                URL url = new URL(filePathOrUrl);
+                HttpURLConnection connection = (HttpURLConnection) url.openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(10000); // 10 seconds timeout
+                connection.setReadTimeout(30000);    // 30 seconds read timeout
+                
+                // Set user agent to avoid potential blocking
+                connection.setRequestProperty("User-Agent", "ZeoTap-Integration-Tool/1.0");
+                
+                // Check response code
+                int responseCode = connection.getResponseCode();
+                if (responseCode != HttpURLConnection.HTTP_OK) {
+                    throw new IOException("Failed to get schema: HTTP error code: " + responseCode);
+                }
+                
+                // Create a temporary file to store the downloaded content
+                String tempFileName = "temp_" + UUID.randomUUID().toString() + ".csv";
+                File tempFile = new File(System.getProperty("java.io.tmpdir"), tempFileName);
+                
+                // Download the file
+                try (InputStream inputStream = connection.getInputStream()) {
+                    Files.copy(inputStream, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
+                
+                log.info("Downloaded URL content to temporary file: {}", tempFile.getAbsolutePath());
+                return tempFile.getAbsolutePath();
+                
+            } catch (MalformedURLException e) {
+                throw new IOException("Invalid URL format: " + e.getMessage(), e);
+            } catch (IOException e) {
+                throw new IOException("Error downloading file from URL: " + e.getMessage(), e);
+            }
+        } else {
+            // It's a local file path, verify it exists
+            Path filePath = Paths.get(filePathOrUrl);
+            if (!Files.exists(filePath)) {
+                throw new IOException("File not found: " + filePathOrUrl);
+            }
+            return filePathOrUrl;
+        }
+    }
 
     /**
      * Reads the schema (column names and inferred types) from a flat file
@@ -42,13 +112,11 @@ public class FlatFileService {
      */
     public List<ColumnMetadata> readFileSchema(FlatFileConfig config) throws IOException {
         List<ColumnMetadata> columns = new ArrayList<>();
-        Path filePath = Paths.get(config.getFileName());
         
-        if (!Files.exists(filePath)) {
-            throw new IOException("File not found: " + config.getFileName());
-        }
+        // Resolve file path or URL
+        String resolvedFilePath = resolveFilePathOrUrl(config.getFileName());
         
-        try (Reader reader = new BufferedReader(new FileReader(config.getFileName(), Charset.forName(config.getEncoding())))) {
+        try (Reader reader = new BufferedReader(new InputStreamReader(new FileInputStream(resolvedFilePath), Charset.forName(config.getEncoding())))) {
             // Configure CSV parser based on the delimiter
             CSVFormat csvFormat = CSVFormat.DEFAULT
                     .withDelimiter(config.getDelimiter().charAt(0))
@@ -149,11 +217,9 @@ public class FlatFileService {
      */
     public List<Map<String, Object>> readData(FlatFileConfig config, List<ColumnMetadata> columns, int limit) throws IOException {
         List<Map<String, Object>> results = new ArrayList<>();
-        Path filePath = Paths.get(config.getFileName());
         
-        if (!Files.exists(filePath)) {
-            throw new IOException("File not found: " + config.getFileName());
-        }
+        // Resolve file path or URL
+        String resolvedFilePath = resolveFilePathOrUrl(config.getFileName());
         
         // Get selected column names
         List<String> selectedColumnNames = new ArrayList<>();
@@ -168,7 +234,7 @@ public class FlatFileService {
             return results;
         }
         
-        try (Reader reader = new BufferedReader(new FileReader(config.getFileName(), Charset.forName(config.getEncoding())))) {
+        try (Reader reader = new BufferedReader(new InputStreamReader(new FileInputStream(resolvedFilePath), Charset.forName(config.getEncoding())))) {
             // Configure CSV parser based on the delimiter
             CSVFormat csvFormat = CSVFormat.DEFAULT
                     .withDelimiter(config.getDelimiter().charAt(0))
@@ -210,11 +276,9 @@ public class FlatFileService {
     public int transferDataFromFlatFile(FlatFileConfig config, List<ColumnMetadata> columns, 
                                       ClickHouseService.DataHandler handler) throws IOException, SQLException {
         int recordCount = 0;
-        Path filePath = Paths.get(config.getFileName());
         
-        if (!Files.exists(filePath)) {
-            throw new IOException("File not found: " + config.getFileName());
-        }
+        // Resolve file path or URL
+        String resolvedFilePath = resolveFilePathOrUrl(config.getFileName());
         
         // Get selected column names
         List<String> selectedColumnNames = new ArrayList<>();
@@ -229,7 +293,7 @@ public class FlatFileService {
             return 0;
         }
         
-        try (Reader reader = new BufferedReader(new FileReader(config.getFileName(), Charset.forName(config.getEncoding())))) {
+        try (Reader reader = new BufferedReader(new InputStreamReader(new FileInputStream(resolvedFilePath), Charset.forName(config.getEncoding())))) {
             // Configure CSV parser based on the delimiter
             CSVFormat csvFormat = CSVFormat.DEFAULT
                     .withDelimiter(config.getDelimiter().charAt(0))
@@ -287,9 +351,10 @@ public class FlatFileService {
             return 0;
         }
         
+        // For target files, we always use the local file path directly
         Path filePath = Paths.get(config.getFileName());
         
-        try (Writer writer = new BufferedWriter(new FileWriter(config.getFileName(), Charset.forName(config.getEncoding())))) {
+        try (Writer writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(config.getFileName()), Charset.forName(config.getEncoding())))) {
             // Configure CSV printer based on the delimiter
             CSVFormat csvFormat = CSVFormat.DEFAULT
                     .withDelimiter(config.getDelimiter().charAt(0))
@@ -336,7 +401,7 @@ public class FlatFileService {
                 try {
                     if (csvPrinter == null) {
                         // Initialize CSV printer on first row
-                        writer = new BufferedWriter(new FileWriter(config.getFileName(), Charset.forName(config.getEncoding())));
+                        writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(config.getFileName()), Charset.forName(config.getEncoding())));
                         CSVFormat csvFormat = CSVFormat.DEFAULT
                                 .withDelimiter(config.getDelimiter().charAt(0))
                                 .withHeader(selectedColumnNames.toArray(new String[0]));

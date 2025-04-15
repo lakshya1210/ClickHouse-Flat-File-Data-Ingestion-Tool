@@ -1,0 +1,12 @@
+com/zeotap/integration/IntegrationApplication.class
+com/zeotap/integration/model/ColumnMetadata.class
+com/zeotap/integration/service/ClickHouseService.class
+com/zeotap/integration/model/ClickHouseConfig.class
+com/zeotap/integration/controller/WebController.class
+com/zeotap/integration/service/ClickHouseService$DataHandler.class
+com/zeotap/integration/controller/IntegrationController.class
+com/zeotap/integration/service/FlatFileService$1.class
+com/zeotap/integration/service/FlatFileService.class
+com/zeotap/integration/model/FlatFileConfig.class
+com/zeotap/integration/model/IngestionRequest.class
+com/zeotap/integration/service/IntegrationService.class
