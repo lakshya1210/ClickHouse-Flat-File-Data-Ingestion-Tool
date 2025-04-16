@@ -265,22 +265,25 @@ public class FlatFileService {
             log.warn("Columns list is null");
         }
         
-        // If no columns selected, return empty result
+        // If no columns selected, select all columns
         if (selectedColumnNames.isEmpty()) {
-            log.info("No columns selected for preview");
+            log.info("No columns selected for preview, selecting all columns");
             // If no columns are explicitly selected, select all columns
-            if (columns != null) {
+            if (columns != null && !columns.isEmpty()) {
                 for (ColumnMetadata column : columns) {
                     if (column != null && column.getName() != null) {
                         selectedColumnNames.add(column.getName());
                         column.setSelected(true); // Mark as selected for preview
                     }
                 }
+                log.info("Auto-selected {} columns for preview", selectedColumnNames.size());
+            } else {
+                log.warn("No columns available for preview");
             }
             
             // Still empty? Return empty result
             if (selectedColumnNames.isEmpty()) {
-                log.warn("No columns available for preview");
+                log.warn("No columns available for preview after auto-selection");
                 return results;
             }
         }

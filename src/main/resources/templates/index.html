@@ -743,13 +743,13 @@
                 const request = {
                     sourceType: sourceType,
                     targetType: targetType,
-                    columns: selectedColumns
+                    selectedColumns: columns.filter(col => col.selected)
                 };
                 
                 // Add source configuration
                 if (sourceType === 'clickhouse') {
-                    request.sourceConfig = getClickHouseSourceConfig();
-                    request.sourceTable = $('#clickhouseTableList').val();
+                    request.clickHouseConfig = getClickHouseSourceConfig();
+                    request.tableName = $('#clickhouseTableList').val();
                     
                     // Add join configuration if enabled
                     if ($('#enableJoin').is(':checked')) {
@@ -758,15 +758,15 @@
                         request.joinCondition = $('#joinCondition').val();
                     }
                 } else if (sourceType === 'flatfile') {
-                    request.sourceConfig = getFlatFileSourceConfig();
+                    request.flatFileConfig = getFlatFileSourceConfig();
                 }
                 
                 // Add target configuration
                 if (targetType === 'clickhouse') {
-                    request.targetConfig = getClickHouseTargetConfig();
-                    request.targetTable = $('#clickhouseTargetTable').val();
+                    request.clickHouseTargetConfig = getClickHouseTargetConfig();
+                    request.targetTableName = $('#clickhouseTargetTable').val();
                 } else if (targetType === 'flatfile') {
-                    request.targetConfig = getFlatFileTargetConfig();
+                    request.flatFileTargetConfig = getFlatFileTargetConfig();
                 }
                 
                 return request;

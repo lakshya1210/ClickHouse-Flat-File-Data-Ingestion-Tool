@@ -20,6 +20,7 @@ public class ClickHouseConfig {
      */
     public String getJdbcUrl() {
         String protocol = secure ? "https" : "http";
-        return String.format("jdbc:clickhouse:%s://%s:%d/%s", protocol, host, port, database);
+        // Add compress=0 parameter to disable compression and avoid LZ4 dependency issue
+        return String.format("jdbc:clickhouse:%s://%s:%d/%s?compress=0", protocol, host, port, database);
     }
 }
