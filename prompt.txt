@@ -1,0 +1,34 @@
+I am developing a bidirectional data ingestion tool that facilitates data transfer between ClickHouse databases and Flat Files. This web-based application provides a simple user interface for configuring connections, selecting columns, and executing data transfers.
+Features:
+- Bidirectional data flow (ClickHouse to Flat File and Flat File to ClickHouse)
+- JWT token-based authentication for ClickHouse
+- Column selection for targeted data ingestion
+- Data preview before ingestion
+- Multi-table JOIN support (bonus feature)
+- Progress tracking and completion reporting
+
+I am planning to implement this using JAVA for backend and HTML/Bootstrap and jQuery for the frontend. Help me to build this.
+
+Make 3 directories:
+1) Controller:
+   - IntegrationController: which will take care of test Connection, flat file schema, ClickHouse schema
+   - WebController: which starts the web server
+
+2) Service:
+   - ClickHouseService: to handle ClickHouse database operations
+   - FlatFileService: to manage flat file operations
+
+3) Model:
+   - Define data models for ClickHouse tables and flat file structures
+
+Steps to implement:
+1. Set up the development environment with Java, HTML, Bootstrap, and jQuery.
+2. Create the directory structure as mentioned above.
+3. Implement JWT token-based authentication for secure ClickHouse access.
+4. Develop the IntegrationController to manage connections and schemas.
+5. Build the WebController to initialize and manage the web interface.
+6. Implement services for ClickHouse and flat file operations.
+7. Add features for column selection, data preview, and multi-table JOIN support.
+8. Ensure progress tracking and completion reporting are functional.
+
+Follow these steps to build a robust data ingestion tool.
