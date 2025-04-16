@@ -52,6 +52,10 @@ Open your web browser and navigate to:
 http://localhost:8080
 ```
 
+### 5. Add Images
+
+Add images for successful build and data ingestion here.
+<a>
 ## Usage Guide
 
 ### ClickHouse to Flat File
@@ -106,3 +110,5 @@ The application's server port and other settings can be configured in `src/main/
 - Thymeleaf
 - Bootstrap 5
 - jQuery
+<img src="public/1.jpeg" alt="Successful Build Image" />
+<img src="public/2.jpeg" alt="Data Ingestion Image" />
