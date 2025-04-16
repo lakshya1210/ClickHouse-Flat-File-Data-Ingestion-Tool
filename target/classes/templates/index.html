@@ -571,6 +571,7 @@
                             $('#ingestionStatus .alert').removeClass('alert-info alert-danger').addClass('alert-success').text('Ingestion completed successfully!');
                             $('#recordCount').text(response.recordCount);
                             $('#ingestionResult').removeClass('hidden');
+                            $('#ingestionProgress').addClass('hidden');
                         } else {
                             $('#progressBar').css('width', '0%');
                             $('#ingestionStatus .alert').removeClass('alert-info alert-success').addClass('alert-danger').text('Ingestion failed: ' + response.message);
@@ -763,7 +764,7 @@
                 
                 // Add target configuration
                 if (targetType === 'clickhouse') {
-                    request.clickHouseTargetConfig = getClickHouseTargetConfig();
+                    request.clickHouseConfig = getClickHouseTargetConfig();
                     request.targetTableName = $('#clickhouseTargetTable').val();
                 } else if (targetType === 'flatfile') {
                     request.flatFileTargetConfig = getFlatFileTargetConfig();

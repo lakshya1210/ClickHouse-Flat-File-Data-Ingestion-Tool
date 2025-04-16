@@ -56,6 +56,17 @@ public class FlatFileService {
             throw new IOException("File path or URL cannot be empty");
         }
         
+        // Check if the file path is a temporary file that already exists
+        // This handles cases where the system has already downloaded the file to a temp location
+        if (filePathOrUrl.contains("/var/folders/") || filePathOrUrl.contains("temp_") || 
+            filePathOrUrl.startsWith(System.getProperty("java.io.tmpdir"))) {
+            Path tempFilePath = Paths.get(filePathOrUrl);
+            if (Files.exists(tempFilePath)) {
+                log.info("Using existing temporary file: {}", filePathOrUrl);
+                return filePathOrUrl;
+            }
+        }
+        
         // Check if the input is a URL
         if (filePathOrUrl.toLowerCase().startsWith("http://") || filePathOrUrl.toLowerCase().startsWith("https://")) {
             log.info("Detected URL: {}", filePathOrUrl);
